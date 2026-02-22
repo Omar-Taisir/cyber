@@ -214,7 +214,7 @@ app.post("/api/auth/register", async (req, res) => {
 
   try {
     const { email, password, username } = req.body;
-    
+
     // Check if user exists
     const userSnapshot = await firestore.collection("users").where("email", "==", email).get();
     if (!userSnapshot.empty) {
@@ -257,7 +257,7 @@ app.post("/api/auth/login", async (req, res) => {
     const userDoc = userSnapshot.docs[0];
     const userData = userDoc.data();
     const { password: _, ...userProfile } = userData;
-    
+
     res.json({ id: userDoc.id, ...userProfile });
   } catch (error) {
     console.error("Login Error:", error);
@@ -266,7 +266,7 @@ app.post("/api/auth/login", async (req, res) => {
 });
 
 // Catch-all for API routes to prevent falling through to Vite SPA fallback
-app.all("/api/*", (req, res) => {
+app.all(/^\/api\/.*$/, (req, res) => {
   res.status(404).json({ error: `API route not found: ${req.method} ${req.url}` });
 });
 

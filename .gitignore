@@ -31,5 +31,5 @@ services/dbService.ts
 .env.local
 .env.example
 .env
-/src
+server.ts
 

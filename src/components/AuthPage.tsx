@@ -21,11 +21,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, lang }) => {
     e.preventDefault();
     setIsProcessing(true);
     setError(null);
-    
+
     try {
       const endpoint = isLogin ? `${API_BASE_URL}/api/auth/login` : `${API_BASE_URL}/api/auth/register`;
       const payload = isLogin ? { email, password } : { email, password, username };
-      
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -37,7 +37,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, lang }) => {
       if (!response.ok) {
         throw new Error(data.error || 'Authentication failed');
       }
-      
+
       onLogin(data);
     } catch (err: any) {
       setError(err.message);
@@ -81,7 +81,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, lang }) => {
         <div className="absolute top-0 left-0 w-full h-full [background:repeating-linear-gradient(0deg,transparent,transparent_40px,rgba(0,242,255,0.05)_40px,rgba(0,242,255,0.05)_41px)]"></div>
         <div className="absolute top-0 left-0 w-full h-full [background:repeating-linear-gradient(90deg,transparent,transparent_40px,rgba(0,242,255,0.05)_40px,rgba(0,242,255,0.05)_41px)]"></div>
       </div>
-      
+
       <div className="w-full max-w-md relative z-10 animate-in fade-in zoom-in duration-700">
         <div className="text-center mb-12 space-y-4">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-cyan-400 text-black shadow-[0_0_50px_rgba(0,242,255,0.3)] mb-6">
@@ -105,8 +105,8 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, lang }) => {
           {!isLogin && (
             <div className="space-y-3">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">{t.USER}</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -118,8 +118,8 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, lang }) => {
 
           <div className="space-y-3">
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">{t.EMAIL}</label>
-            <input 
-              type="email" 
+            <input
+              type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -130,8 +130,8 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, lang }) => {
 
           <div className="space-y-3">
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">{t.PASS}</label>
-            <input 
-              type="password" 
+            <input
+              type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -140,7 +140,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, lang }) => {
             />
           </div>
 
-          <button 
+          <button
             type="submit"
             disabled={isProcessing}
             className="w-full py-5 bg-cyan-400 text-black font-black text-[11px] uppercase tracking-[0.4em] rounded-2xl hover:shadow-[0_0_30px_rgba(0,242,255,0.4)] transition-all active:scale-95 disabled:opacity-50"
@@ -153,7 +153,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, lang }) => {
           </button>
 
           <div className="text-center pt-4">
-            <button 
+            <button
               type="button"
               onClick={() => setIsLogin(!isLogin)}
               className="text-[10px] font-black text-slate-600 uppercase tracking-widest hover:text-cyan-400 transition-colors"

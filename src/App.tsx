@@ -35,7 +35,7 @@ const App: React.FC = () => {
       event,
       details
     };
-    
+
     // We don't need to manually update state here if we use onSnapshot
     // But we keep it for immediate UI feedback (optimistic update)
     // setAuditLogs(prev => [newLog, ...prev].slice(0, 100));
@@ -58,7 +58,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     console.log("Aegis_Prism: Initializing Subsystems...");
-    
+
     // Real-time listener for Audit Logs
     const logsQuery = query(collection(db, "audit_logs"), orderBy("timestamp", "desc"), limit(100));
     const unsubscribeLogs = onSnapshot(logsQuery, (snapshot) => {
@@ -133,9 +133,9 @@ const App: React.FC = () => {
       case View.DASHBOARD: return <Dashboard auditLogs={auditLogs} lang={lang} />;
       case View.HACKBOT: return <HackBot lang={lang} />;
       case View.PENTEST: return (
-        <PentestModule 
-          onAudit={addLog} 
-          lang={lang} 
+        <PentestModule
+          onAudit={addLog}
+          lang={lang}
           syncedResults={pentestResults}
           onSyncResult={async (result) => {
             try {
@@ -151,9 +151,9 @@ const App: React.FC = () => {
         />
       );
       case View.NETWORK: return (
-        <NetworkModule 
-          onAudit={addLog} 
-          lang={lang} 
+        <NetworkModule
+          onAudit={addLog}
+          lang={lang}
           syncedHosts={networkHosts}
           onSyncHosts={async (hosts) => {
             try {
@@ -173,8 +173,8 @@ const App: React.FC = () => {
       case View.PAYLOADS: return <PayloadGenerator onAudit={addLog} lang={lang} />;
       case View.CRYPTO: return <EncryptionLab onAudit={addLog} lang={lang} chains={chains} />;
       case View.CRYPTO_CHAINS: return (
-        <PrismChains 
-          chains={chains} 
+        <PrismChains
+          chains={chains}
           onAddChain={async (c) => {
             // Optimistic update is handled by onSnapshot eventually
             // but we can push to server
@@ -188,7 +188,7 @@ const App: React.FC = () => {
             } catch (error) {
               console.error("Failed to save chain:", error);
             }
-          }} 
+          }}
           onDeleteChain={async (id) => {
             try {
               await fetch(`${API_BASE_URL}/api/chains/${id}`, { method: 'DELETE' });
@@ -197,7 +197,7 @@ const App: React.FC = () => {
               console.error("Failed to delete chain:", error);
             }
           }}
-          lang={lang} 
+          lang={lang}
         />
       );
       case View.REPORTS: return <ReportingModule auditLogs={auditLogs} lang={lang} />;
@@ -208,9 +208,9 @@ const App: React.FC = () => {
 
   return (
     <div className={`flex flex-col md:flex-row h-screen w-screen bg-[#000808] text-white overflow-hidden ${lang === 'ar' ? 'font-arabic' : ''}`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      <Sidebar 
-        currentView={currentView} 
-        onViewChange={setCurrentView} 
+      <Sidebar
+        currentView={currentView}
+        onViewChange={setCurrentView}
         lang={lang}
         user={currentUser}
         onLogout={() => setCurrentUser(null)}
@@ -227,7 +227,7 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      <button 
+      <button
         onClick={() => setCurrentView(View.HACKBOT)}
         className="md:hidden fixed bottom-28 right-6 w-16 h-16 bg-cyan-400 text-black rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(0,242,255,0.5)] z-[95] active:scale-90 transition-transform"
       >
