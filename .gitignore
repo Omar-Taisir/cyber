@@ -30,3 +30,6 @@ services/cryptoService.ts
 services/dbService.ts
 .env.local
 .env.example
+.env
+/src
+
