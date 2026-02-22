@@ -1,0 +1,144 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>AEGIS PRISM // Elite Offensive Security Suite</title>
+  
+  <!-- Global Environment Shims -->
+  <script>
+    (function() {
+      var _global = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof self !== 'undefined' ? self : {};
+      _global.global = _global;
+      _global.window = _global;
+      _global.self = _global;
+      _global.process = _global.process || {};
+      _global.process.env = _global.process.env || { API_KEY: "" };
+      _global.process.version = 'v18.0.0';
+      _global.process.browser = true;
+      
+      if (typeof _global.Buffer === 'undefined') {
+        var mock = function() {};
+        mock.from = function(data) {
+          if (typeof data === 'string') return new TextEncoder().encode(data);
+          if (data instanceof Uint8Array) return data;
+          return new Uint8Array(data || 0);
+        };
+        mock.alloc = function(n) { return new Uint8Array(n); };
+        mock.isBuffer = function() { return false; };
+        _global.Buffer = mock;
+      }
+    })();
+  </script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/buffer/6.0.3/buffer.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
+
+    :root {
+      --prism-cyan: #00f2ff;
+      --prism-bg: #000808;
+      --prism-panel: rgba(0, 18, 18, 0.7);
+      --prism-border: rgba(0, 242, 255, 0.15);
+    }
+
+    body {
+      background-color: var(--prism-bg);
+      color: #ffffff;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .glass-panel {
+      background: var(--prism-panel);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--prism-border);
+      border-radius: 1.25rem;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .glass-panel:hover {
+      border-color: var(--prism-cyan);
+      box-shadow: 0 0 30px rgba(0, 242, 255, 0.05);
+    }
+
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    .btn-action {
+      background: var(--prism-cyan);
+      color: #000;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      border-radius: 0.75rem;
+      transition: all 0.2s ease-out;
+    }
+
+    .btn-action:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(0, 242, 255, 0.4);
+    }
+
+    .ticker-wrap {
+      width: 100%;
+      overflow: hidden;
+      background: rgba(0, 242, 255, 0.05);
+      border-bottom: 1px solid rgba(0, 242, 255, 0.1);
+      padding: 6px 0;
+    }
+
+    .ticker {
+      display: inline-block;
+      white-space: nowrap;
+      animation: ticker 40s linear infinite;
+    }
+
+    @keyframes ticker {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--prism-cyan); border-radius: 10px; }
+
+    .scanline {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
+      background-size: 100% 4px;
+      pointer-events: none;
+      z-index: 1000;
+      opacity: 0.1;
+    }
+  </style>
+
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@19.0.0",
+    "react-dom": "https://esm.sh/react-dom@19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+    "@google/genai": "https://esm.sh/@google/genai@1.4.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/src/index.css">
+</head>
+<body>
+  <div class="scanline"></div>
+  <div id="root"></div>
+  <script type="module" src="/src/index.tsx"></script>
+</body>
+</html>

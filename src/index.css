@@ -1,0 +1,12 @@
+:root {
+  --prism-cyan: #00f2ff;
+  --prism-bg: #000808;
+  --prism-panel: rgba(0, 18, 18, 0.7);
+  --prism-border: rgba(0, 242, 255, 0.15);
+}
+
+body {
+  background-color: var(--prism-bg);
+  color: #ffffff;
+  font-family: 'Inter', sans-serif;
+}

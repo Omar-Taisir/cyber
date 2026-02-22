@@ -1,0 +1,9 @@
+{
+  "name": "AEGIS PRISM | Elite Offensive Orchestrator",
+  "description": "High-fidelity offensive security suite. Features Aegis Prism cryptographic chains, 200+ tactical assets, and neural penetration auditing.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
