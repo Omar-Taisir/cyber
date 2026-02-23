@@ -53,7 +53,7 @@ const HackBot: React.FC<HackBotProps> = ({ lang }) => {
     setActiveThoughts(agentThoughts);
 
     try {
-      const recentExperiences = await TacticalDB.getExperiences();
+      const recentExperiences = TacticalDB.getExperiences();
       const learningContext = recentExperiences.length > 0 
         ? `NEURAL_CONTEXT_WINDOW:\n${recentExperiences.map(e => `- [${e.type}] Target: ${e.target || 'GLOBAL'} | Outcome: ${e.outcome}`).join('\n')}`
         : "Operational Environment Nominal. All nodes clear.";

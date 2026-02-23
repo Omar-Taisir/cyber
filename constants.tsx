@@ -1,16 +1,4 @@
-import { HackingTool, EncryptionMode } from './types';
-
-export const MODES_METADATA: Record<EncryptionMode, { name: string; desc: string; strength: number }> = {
-  [EncryptionMode.AES_GCM]: { name: 'AES-256-GCM', desc: 'Galois/Counter Mode. High performance, authenticated encryption.', strength: 95 },
-  [EncryptionMode.AES_CCM]: { name: 'AES-256-CCM', desc: 'Counter with CBC-MAC. Standard for WiFi security (WPA2).', strength: 90 },
-  [EncryptionMode.CHACHA20_POLY1305]: { name: 'ChaCha20-Poly1305', desc: 'Modern stream cipher. Faster than AES on mobile hardware.', strength: 96 },
-  [EncryptionMode.AES_GCM_SIV]: { name: 'AES-GCM-SIV', desc: 'Nonce-misuse resistant authenticated encryption.', strength: 98 },
-  [EncryptionMode.AES_CTR_HMAC_SHA512]: { name: 'AES-CTR + HMAC-SHA512', desc: 'Traditional Encrypt-then-MAC construction.', strength: 92 },
-  [EncryptionMode.XCHACHA20_POLY1305]: { name: 'XChaCha20-Poly1305', desc: 'ChaCha20 with extended nonce for safer random nonces.', strength: 99 },
-  [EncryptionMode.AES_CBC_HMAC_SHA256]: { name: 'AES-CBC + HMAC-SHA256', desc: 'Legacy authenticated encryption (TLS 1.2 style).', strength: 85 },
-  [EncryptionMode.AES_OCB]: { name: 'AES-OCB', desc: 'Offset Codebook Mode. Parallelizable and efficient.', strength: 94 },
-  [EncryptionMode.UNIFIED_PRISM]: { name: 'UNIFIED-PRISM-CORE', desc: 'Proprietary multi-layer cryptographic orchestration.', strength: 100 },
-};
+import { HackingTool } from './types';
 
 export const TOOLS_DATABASE: HackingTool[] = [
   // --- RECON & INFORMATION GATHERING (OSINT/DNS/NETWORK) ---

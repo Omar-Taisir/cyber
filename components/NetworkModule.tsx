@@ -7,19 +7,14 @@ import NetworkVisualizer from './NetworkVisualizer';
 interface NetworkModuleProps {
   onAudit: (event: string, details: string) => void;
   lang: 'en' | 'ar';
-  syncedHosts: Host[];
-  onSyncHosts: (hosts: Host[]) => Promise<void>;
 }
 
-const NetworkModule: React.FC<NetworkModuleProps> = ({ onAudit, lang, syncedHosts, onSyncHosts }) => {
+const NetworkModule: React.FC<NetworkModuleProps> = ({ onAudit, lang }) => {
   const [range, setRange] = useState('10.0.0.0/24');
   const [isScanning, setIsScanning] = useState(false);
-  const [localHosts, setLocalHosts] = useState<Host[]>([]);
+  const [hosts, setHosts] = useState<Host[]>([]);
   const [scanLogs, setScanLogs] = useState<ScanLog[]>([]);
   const [scanProgress, setScanProgress] = useState(0);
-  
-  // Combine local and synced hosts
-  const displayHosts = [...localHosts, ...syncedHosts.filter(sh => !localHosts.some(lh => lh.ip === sh.ip))];
   
   const consoleEndRef = useRef<HTMLDivElement>(null);
 
@@ -36,7 +31,7 @@ const NetworkModule: React.FC<NetworkModuleProps> = ({ onAudit, lang, syncedHost
   const startScan = async () => {
     if (!range) return;
     setIsScanning(true);
-    setLocalHosts([]);
+    setHosts([]);
     setScanLogs([]);
     setScanProgress(0);
     onAudit("Network Recon", `Target subnet: ${range}`);
@@ -54,8 +49,7 @@ const NetworkModule: React.FC<NetworkModuleProps> = ({ onAudit, lang, syncedHost
 
       const response = await generateNetworkIntel(range);
       addLog(`MAPPING COMPLETE: ${response.hosts.length} NODES LOGGED.`, 'success');
-      setLocalHosts(response.hosts);
-      await onSyncHosts(response.hosts);
+      setHosts(response.hosts);
       setScanProgress(100);
     } catch (err: any) {
       addLog(`ENGINE_FAULT: ${err.message}`, 'error');
@@ -134,12 +128,12 @@ const NetworkModule: React.FC<NetworkModuleProps> = ({ onAudit, lang, syncedHost
         </div>
       </div>
 
-      {displayHosts.length > 0 && (
-        <NetworkVisualizer hosts={displayHosts} lang={lang} />
+      {hosts.length > 0 && (
+        <NetworkVisualizer hosts={hosts} lang={lang} />
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {displayHosts.map(h => (
+        {hosts.map(h => (
           <div key={h.ip} className="glass-panel p-8 border-white/5 hover:border-cyan-400 transition-all">
             <div className={`flex items-center gap-6 mb-8 ${lang === 'ar' ? 'flex-row-reverse' : ''}`}>
               <div className="w-14 h-14 border border-white/10 rounded-2xl flex items-center justify-center text-cyan-400">

@@ -29,7 +29,3 @@ services/geminiService.ts
 services/cryptoService.ts
 services/dbService.ts
 .env.local
-.env.example
-.env
-server.ts
-

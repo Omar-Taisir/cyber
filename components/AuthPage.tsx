@@ -1,7 +1,13 @@
 
 import React, { useState } from 'react';
 import { User } from '../types';
-import { API_BASE_URL } from '../config';
+import { auth, db } from '../services/firebase';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile
+} from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 interface AuthPageProps {
   onLogin: (user: User) => void;
@@ -14,7 +20,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, lang }) => {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,25 +28,54 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, lang }) => {
     setError(null);
 
     try {
-      const endpoint = isLogin ? `${API_BASE_URL}/api/auth/login` : `${API_BASE_URL}/api/auth/register`;
-      const payload = isLogin ? { email, password } : { email, password, username };
+      if (isLogin) {
+        // Sign In
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const firebaseUser = userCredential.user;
 
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+        // Fetch additional user data from Firestore
+        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+        const userData = userDoc.exists() ? userDoc.data() : null;
 
-      const data = await response.json();
+        const appUser: User = {
+          id: firebaseUser.uid,
+          username: userData?.username || firebaseUser.displayName || 'OPERATOR',
+          email: firebaseUser.email || email,
+          clearance: userData?.clearance || 'DELTA',
+          avatar: firebaseUser.photoURL || undefined
+        };
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Authentication failed');
+        onLogin(appUser);
+      } else {
+        // Sign Up
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const firebaseUser = userCredential.user;
+
+        // Update Firebase profile
+        await updateProfile(firebaseUser, {
+          displayName: username
+        });
+
+        const appUser: User = {
+          id: firebaseUser.uid,
+          username: username,
+          email: email,
+          clearance: 'DELTA'
+        };
+
+        // Save user data to Firestore
+        await setDoc(doc(db, 'users', firebaseUser.uid), {
+          username,
+          email,
+          clearance: 'DELTA',
+          createdAt: new Date().toISOString()
+        });
+
+        onLogin(appUser);
       }
-
-      onLogin(data);
     } catch (err: any) {
-      setError(err.message);
       console.error("Auth Error:", err);
+      setError(err.message || "Authentication failed.");
     } finally {
       setIsProcessing(false);
     }
@@ -97,8 +131,8 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, lang }) => {
 
         <form onSubmit={handleSubmit} className="glass-panel p-10 space-y-8 bg-white/[0.01] border-white/10 shadow-2xl">
           {error && (
-            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-[10px] font-black uppercase tracking-widest animate-shake">
-              <i className="fas fa-triangle-exclamation mr-2"></i> {error}
+            <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-[10px] text-red-400 font-mono uppercase tracking-wider">
+              {error}
             </div>
           )}
 

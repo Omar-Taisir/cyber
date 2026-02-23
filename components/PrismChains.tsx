@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { EncryptionMode, PrismChain } from '../types';
-import { MODES_METADATA } from '../constants';
+import { MODES_METADATA } from '../services/cryptoService';
 
 interface PrismChainsProps {
   chains: PrismChain[];
