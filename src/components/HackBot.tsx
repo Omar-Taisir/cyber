@@ -58,8 +58,9 @@ const HackBot: React.FC<HackBotProps> = ({ lang }) => {
         ? `NEURAL_CONTEXT_WINDOW:\n${recentExperiences.map(e => `- [${e.type}] Target: ${e.target || 'GLOBAL'} | Outcome: ${e.outcome}`).join('\n')}`
         : "Operational Environment Nominal. All nodes clear.";
 
+      const manualKey = localStorage.getItem('AEGIS_GEMINI_API_KEY');
       const ai = new GoogleGenAI({
-        apiKey: (import.meta as any).env?.VITE_GEMINI_API_KEY || (process as any).env?.GEMINI_API_KEY
+        apiKey: manualKey || (import.meta as any).env?.VITE_GEMINI_API_KEY || (process as any).env?.GEMINI_API_KEY
       });
 
       for (let i = 0; i < agentThoughts.length; i++) {

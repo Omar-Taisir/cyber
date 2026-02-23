@@ -53,7 +53,10 @@ function parseGeminiJson(rawText: string | undefined): any {
 
 // Helper to get API Key
 const getApiKey = () => {
-  return ((import.meta as any).env?.VITE_GEMINI_API_KEY as string) || ((process as any).env?.GEMINI_API_KEY as string);
+  const manualKey = typeof window !== 'undefined' ? localStorage.getItem('AEGIS_GEMINI_API_KEY') : null;
+  return manualKey ||
+    ((import.meta as any).env?.VITE_GEMINI_API_KEY as string) ||
+    ((process as any).env?.GEMINI_API_KEY as string);
 };
 
 export const analyzeCode = async (code: string): Promise<DeobfuscationResponse> => {
