@@ -51,10 +51,15 @@ function parseGeminiJson(rawText: string | undefined): any {
   }
 }
 
+// Helper to get API Key
+const getApiKey = () => {
+  return ((import.meta as any).env?.VITE_GEMINI_API_KEY as string) || ((process as any).env?.GEMINI_API_KEY as string);
+};
+
 export const analyzeCode = async (code: string): Promise<DeobfuscationResponse> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const ai = new GoogleGenAI({ apiKey: getApiKey() });
   const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-preview',
+    model: 'gemini-1.5-pro',
     contents: `[SYSTEM: CODE_RECONNAISSANCE]
     Analyze this code block. It may be obfuscated or malicious.
     1. De-obfuscate/Clean the code.
@@ -81,9 +86,9 @@ export const analyzeCode = async (code: string): Promise<DeobfuscationResponse> 
 };
 
 export const getCustomPayload = async (prompt: string, category: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const ai = new GoogleGenAI({ apiKey: getApiKey() });
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'gemini-1.5-flash',
     contents: `[SYSTEM: OFFENSIVE_SYNTHESIS]
     Requirement: ${prompt}
     Vector: ${category}
@@ -94,9 +99,9 @@ export const getCustomPayload = async (prompt: string, category: string): Promis
 
 export const generateNetworkIntel = async (range: string): Promise<NetworkIntelResponse> => {
   const scanTask = async (): Promise<NetworkIntelResponse> => {
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const ai = new GoogleGenAI({ apiKey: getApiKey() });
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-1.5-flash',
       contents: `Simulate high-fidelity network reconnaissance for subnet: ${range}. 
       1. Identify all active hosts.
       2. Perform reverse DNS lookups to resolve hostnames where possible.
@@ -152,16 +157,16 @@ export const generateNetworkIntel = async (range: string): Promise<NetworkIntelR
 };
 
 export const analyzeSecurity = async (
-  url: string, 
-  headers: string, 
+  url: string,
+  headers: string,
   workflow: PentestWorkflow = 'THREAT_HUNTING',
   intensity: ScanIntensity = 'QUICK',
   scopes: PentestScope[] = ['WEB_APP']
 ): Promise<SecurityAnalysisResponse> => {
   const scanTask = async (): Promise<SecurityAnalysisResponse> => {
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const ai = new GoogleGenAI({ apiKey: getApiKey() });
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-1.5-pro',
       contents: `[SYSTEM: 100%_WEB_PENTEST_ENGINE]
       Target: ${url}
       Context: ${headers}
@@ -207,9 +212,9 @@ export const analyzeSecurity = async (
 };
 
 export const getToolAdvice = async (toolName: string, target: string): Promise<ToolAdviceResponse> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const ai = new GoogleGenAI({ apiKey: getApiKey() });
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-1.5-flash",
     contents: `[OFFENSIVE_BRIEFING]
     Tool: ${toolName}
     Instruction: Explain the low-level technical logic and IDS/WAF bypass mechanics for this tool. Provide advanced CLI deployment examples for target: ${target}`,
