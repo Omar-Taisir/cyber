@@ -73,7 +73,7 @@ const HackBot: React.FC<HackBotProps> = ({ lang }) => {
 
       const response = await ai.models.generateContent({
         model: 'gemini-1.5-pro',
-        contents: currentInput,
+        contents: [{ role: 'user', parts: [{ text: currentInput }] }],
         config: {
           systemInstruction: `You are AEGIS-ARCHITECT, a professional autonomous offensive security architect. 
           
@@ -88,8 +88,7 @@ const HackBot: React.FC<HackBotProps> = ({ lang }) => {
           2. Link to official CVE or vendor documentation.
           3. Structure complex data in Markdown tables or lists.
           4. Contextual background: ${learningContext}`,
-          tools: [{ googleSearch: {} }],
-          thinkingConfig: { thinkingBudget: 4000 }
+          tools: [{ googleSearch: {} }]
         }
       });
 
