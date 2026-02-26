@@ -2,9 +2,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { ScanResult, PentestWorkflow, ScanIntensity, PentestScope, Host } from "../types";
 
 export const getApiKey = () => {
-  // Safe environment detection
   const env = (import.meta as any).env || {};
-
   const manual = typeof window !== 'undefined' ? localStorage.getItem('AEGIS_GEMINI_API_KEY') : null;
   const isPublicMode = typeof window !== 'undefined' ? localStorage.getItem('AEGIS_PUBLIC_KEY_MODE') === 'true' : false;
   const viteKey = env.VITE_GEMINI_API_KEY;
@@ -69,11 +67,10 @@ function parseGeminiJson(rawText: string | undefined): any {
   }
 }
 
-// Global default model - using flash for maximum compatibility and to avoid 404/access issues
 const DEFAULT_MODEL = 'gemini-1.5-flash';
 
 export const analyzeCode = async (code: string): Promise<DeobfuscationResponse> => {
-  const ai = new GoogleGenAI({ apiKey: getApiKey() as string });
+  const ai = new GoogleGenAI({ apiKey: getApiKey() as string, apiVersion: "v1beta" });
   const response = await ai.models.generateContent({
     model: DEFAULT_MODEL,
     contents: `[SYSTEM: CODE_RECONNAISSANCE]
@@ -89,7 +86,7 @@ export const analyzeCode = async (code: string): Promise<DeobfuscationResponse> 
         properties: {
           deobfuscatedCode: { type: Type.STRING },
           analysis: { type: Type.STRING },
-          riskScore: { type: Type.NUMBER, description: "Scale 1-100" },
+          riskScore: { type: Type.NUMBER },
           indicators: { type: Type.ARRAY, items: { type: Type.STRING } }
         },
         required: ["deobfuscatedCode", "analysis", "riskScore", "indicators"]
@@ -101,7 +98,7 @@ export const analyzeCode = async (code: string): Promise<DeobfuscationResponse> 
 };
 
 export const getCustomPayload = async (prompt: string, category: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: getApiKey() as string });
+  const ai = new GoogleGenAI({ apiKey: getApiKey() as string, apiVersion: "v1beta" });
   const response = await ai.models.generateContent({
     model: DEFAULT_MODEL,
     contents: `[SYSTEM: OFFENSIVE_SYNTHESIS]
@@ -114,15 +111,10 @@ export const getCustomPayload = async (prompt: string, category: string): Promis
 
 export const generateNetworkIntel = async (range: string): Promise<NetworkIntelResponse> => {
   const scanTask = async (): Promise<NetworkIntelResponse> => {
-    const ai = new GoogleGenAI({ apiKey: getApiKey() as string });
+    const ai = new GoogleGenAI({ apiKey: getApiKey() as string, apiVersion: "v1beta" });
     const response = await ai.models.generateContent({
       model: DEFAULT_MODEL,
-      contents: `Simulate high-fidelity network reconnaissance for subnet: ${range}. 
-      1. Identify all active hosts.
-      2. Perform reverse DNS lookups to resolve hostnames where possible.
-      3. Fingerprint OS versions and hardware vendors.
-      4. Enumerate open ports and identify specific services and versions (e.g., Apache 2.4.41, OpenSSH 8.2p1).
-      5. Calculate a risk score for each host based on identified services.`,
+      contents: `Simulate network recon for subnet: ${range}. Return JSON with hosts and topologyNotes.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -135,10 +127,10 @@ export const generateNetworkIntel = async (range: string): Promise<NetworkIntelR
                 properties: {
                   ip: { type: Type.STRING },
                   hostname: { type: Type.STRING },
-                  status: { type: Type.STRING, enum: ['UP', 'DOWN'] },
+                  status: { type: Type.STRING },
                   mac: { type: Type.STRING },
                   vendor: { type: Type.STRING },
-                  os: { type: Type.STRING, enum: ['Linux', 'Windows', 'Cisco', 'Darwin', 'IoT'] },
+                  os: { type: Type.STRING },
                   riskScore: { type: Type.NUMBER },
                   tags: { type: Type.ARRAY, items: { type: Type.STRING } },
                   ports: {
@@ -149,18 +141,15 @@ export const generateNetworkIntel = async (range: string): Promise<NetworkIntelR
                         port: { type: Type.NUMBER },
                         service: { type: Type.STRING },
                         version: { type: Type.STRING },
-                        severity: { type: Type.STRING, enum: ['low', 'medium', 'high'] }
-                      },
-                      required: ["port", "service", "version", "severity"]
+                        severity: { type: Type.STRING }
+                      }
                     }
                   }
-                },
-                required: ["ip", "hostname", "status", "mac", "vendor", "os", "riskScore", "tags", "ports"]
+                }
               }
             },
             topologyNotes: { type: Type.STRING }
-          },
-          required: ["hosts", "topologyNotes"]
+          }
         }
       }
     });
@@ -174,12 +163,10 @@ export const generateNetworkIntel = async (range: string): Promise<NetworkIntelR
 export const analyzeSecurity = async (
   url: string,
   headers: string,
-  workflow: PentestWorkflow = 'THREAT_HUNTING',
-  intensity: ScanIntensity = 'QUICK',
-  scopes: PentestScope[] = ['WEB_APP']
+  workflow: PentestWorkflow = 'THREAT_HUNTING'
 ): Promise<SecurityAnalysisResponse> => {
   const scanTask = async (): Promise<SecurityAnalysisResponse> => {
-    const ai = new GoogleGenAI({ apiKey: getApiKey() as string });
+    const ai = new GoogleGenAI({ apiKey: getApiKey() as string, apiVersion: "v1beta" });
     try {
       const response = await ai.models.generateContent({
         model: DEFAULT_MODEL,
@@ -189,26 +176,7 @@ export const analyzeSecurity = async (
         Directives: Perform a deep logical audit. Correlate with 2024-2025 CVEs using Search.
         Format: JSON array of ScanResult objects.`,
         config: {
-          responseMimeType: "application/json",
-          tools: [{ googleSearch: {} }],
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                vulnerability: { type: Type.STRING },
-                type: { type: Type.STRING },
-                severity: { type: Type.STRING, enum: ['Low', 'Medium', 'High', 'Critical'] },
-                description: { type: Type.STRING },
-                impact: { type: Type.STRING },
-                remediation: { type: Type.STRING },
-                cveId: { type: Type.STRING },
-                exploitPoC: { type: Type.STRING },
-                attackChain: { type: Type.ARRAY, items: { type: Type.STRING } }
-              },
-              required: ["vulnerability", "severity", "description", "exploitPoC", "impact", "remediation"]
-            }
-          }
+          tools: [{ googleSearch: {} }] as any
         }
       });
 
@@ -222,7 +190,6 @@ export const analyzeSecurity = async (
         sources: sources
       };
     } catch (error) {
-      // Fallback without googleSearch
       const response = await ai.models.generateContent({
         model: DEFAULT_MODEL,
         contents: `[SYSTEM: 100%_WEB_PENTEST_ENGINE]
@@ -230,27 +197,6 @@ export const analyzeSecurity = async (
         Context: ${headers}
         Directives: Perform a deep logical audit.
         Format: JSON array of ScanResult objects.`,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                vulnerability: { type: Type.STRING },
-                type: { type: Type.STRING },
-                severity: { type: Type.STRING, enum: ['Low', 'Medium', 'High', 'Critical'] },
-                description: { type: Type.STRING },
-                impact: { type: Type.STRING },
-                remediation: { type: Type.STRING },
-                cveId: { type: Type.STRING },
-                exploitPoC: { type: Type.STRING },
-                attackChain: { type: Type.ARRAY, items: { type: Type.STRING } }
-              },
-              required: ["vulnerability", "severity", "description", "exploitPoC", "impact", "remediation"]
-            }
-          }
-        }
       });
       return {
         results: parseGeminiJson(response.text) || [],
@@ -263,14 +209,14 @@ export const analyzeSecurity = async (
 };
 
 export const getToolAdvice = async (toolName: string, target: string): Promise<ToolAdviceResponse> => {
-  const ai = new GoogleGenAI({ apiKey: getApiKey() as string });
+  const ai = new GoogleGenAI({ apiKey: getApiKey() as string, apiVersion: "v1beta" });
   try {
     const response = await ai.models.generateContent({
       model: DEFAULT_MODEL,
       contents: `[OFFENSIVE_BRIEFING]
       Tool: ${toolName}
-      Instruction: Explain the low-level technical logic and IDS/WAF bypass mechanics for this tool. Provide advanced CLI deployment examples for target: ${target}`,
-      config: { tools: [{ googleSearch: {} }] }
+      Instruction: Explain the technical logic and IDS/WAF bypass for this tool on target: ${target}`,
+      config: { tools: [{ googleSearch: {} }] as any }
     });
 
     const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => ({
@@ -287,7 +233,7 @@ export const getToolAdvice = async (toolName: string, target: string): Promise<T
       model: DEFAULT_MODEL,
       contents: `[OFFENSIVE_BRIEFING]
       Tool: ${toolName}
-      Instruction: Explain the low-level technical logic and IDS/WAF bypass mechanics for this tool. Provide advanced CLI deployment examples for target: ${target}`,
+      Instruction: Explain the technical logic and IDS/WAF bypass for this tool on target: ${target}`,
     });
     return {
       text: response.text || "INTEL_FETCH_FAULT",

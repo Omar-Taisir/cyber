@@ -58,7 +58,7 @@ const HackBot: React.FC<HackBotProps> = ({ lang }) => {
         ? `NEURAL_CONTEXT_WINDOW:\n${recentExperiences.map(e => `- [${e.type}] Target: ${e.target || 'GLOBAL'} | Outcome: ${e.outcome}`).join('\n')}`
         : "Operational Environment Nominal. All nodes clear.";
 
-      const ai = new GoogleGenAI({ apiKey: getApiKey() as string });
+      const ai = new GoogleGenAI({ apiKey: getApiKey() as string, apiVersion: "v1beta" });
 
       for (let i = 0; i < agentThoughts.length; i++) {
         await new Promise(r => setTimeout(r, 600));
@@ -68,50 +68,24 @@ const HackBot: React.FC<HackBotProps> = ({ lang }) => {
         ));
       }
 
-      // Using gemini-1.5-flash for compatibility
-      const MODEL_NAME = 'gemini-1.5-flash';
-
       let response;
       try {
         response = await ai.models.generateContent({
-          model: MODEL_NAME,
+          model: 'gemini-1.5-flash',
           contents: currentInput,
           config: {
             systemInstruction: `You are AEGIS-ARCHITECT, a professional autonomous offensive security architect. 
-            
-            STYLE:
-            - Analytical, precise, professional.
-            - Use technical jargon accurately.
-            - Avoid fluff or conversational fillers.
-            - Arabic responses should be equally tactical.
-            
-            DIRECTIVES:
-            1. Provide CLI-ready commands with modern flags.
-            2. Link to official CVE or vendor documentation.
-            3. Structure complex data in Markdown tables or lists.
-            4. Contextual background: ${learningContext}`,
-            tools: [{ googleSearch: {} }]
+              STYLE: Analytical, precise, professional. Arabic responses tactical.
+              DIRECTIVES: CLI-ready commands, CVE links, Markdown tables. Context: ${learningContext}`,
+            tools: [{ googleSearch: {} }] as any
           }
         });
-      } catch (searchError) {
-        // Fallback without googleSearch
+      } catch (err) {
         response = await ai.models.generateContent({
-          model: MODEL_NAME,
+          model: 'gemini-1.5-flash',
           contents: currentInput,
           config: {
-            systemInstruction: `You are AEGIS-ARCHITECT, a professional autonomous offensive security architect. 
-            
-            STYLE:
-            - Analytical, precise, professional.
-            - Use technical jargon accurately.
-            - Avoid fluff or conversational fillers.
-            - Arabic responses should be equally tactical.
-            
-            DIRECTIVES:
-            1. Provide CLI-ready commands with modern flags.
-            2. Link to official CVE or vendor documentation.
-            3. Structure complex data in Markdown tables or lists.
-            4. Contextual background: ${learningContext}`,
+            systemInstruction: `You are AEGIS-ARCHITECT... Context: ${learningContext}`,
           }
         });
       }
@@ -132,12 +106,6 @@ const HackBot: React.FC<HackBotProps> = ({ lang }) => {
         codeOutput,
         thoughtSteps: agentThoughts
       };
-
-      TacticalDB.recordExperience({
-        type: 'USER_INTERACTION',
-        outcome: 'INFORMATIONAL',
-        details: { query: currentInput }
-      });
 
       setMessages(prev => [...prev, assistantMsg]);
     } catch (err: any) {
@@ -171,8 +139,8 @@ const HackBot: React.FC<HackBotProps> = ({ lang }) => {
             {messages.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-4`}>
                 <div className={`max-w-[90%] md:max-w-[80%] rounded-3xl border relative shadow-2xl transition-all ${m.role === 'user'
-                    ? 'bg-cyan-900/[0.05] border-cyan-500/30 text-cyan-400 font-mono'
-                    : 'bg-[#050505] border-white/10 text-slate-300'
+                  ? 'bg-cyan-900/[0.05] border-cyan-500/30 text-cyan-400 font-mono'
+                  : 'bg-[#050505] border-white/10 text-slate-300'
                   }`}>
                   <div className={`px-5 py-2 border-b flex items-center justify-between text-[9px] font-black uppercase tracking-[0.2em] ${m.role === 'user' ? 'bg-cyan-400/10 text-cyan-400 border-cyan-500/20' : 'bg-white/5 text-slate-500 border-white/5'}`}>
                     <span>{m.role === 'user' ? (lang === 'ar' ? 'المشغل' : 'OPERATOR_NODE') : 'ARCHITECT_CORE'}</span>
@@ -221,8 +189,8 @@ const HackBot: React.FC<HackBotProps> = ({ lang }) => {
                   {activeThoughts.map(t => (
                     <div key={t.id} className="flex items-center gap-4 transition-all">
                       <div className={`w-2 h-2 rounded-full ${t.status === 'COMPLETED' ? 'bg-cyan-400' :
-                          t.status === 'RUNNING' ? 'bg-cyan-400 animate-ping' :
-                            'bg-white/5'
+                        t.status === 'RUNNING' ? 'bg-cyan-400 animate-ping' :
+                          'bg-white/5'
                         }`}></div>
                       <span className={`text-[10px] font-mono tracking-widest ${t.status === 'RUNNING' ? 'text-cyan-400 font-black italic' : 'text-slate-700'
                         }`}>

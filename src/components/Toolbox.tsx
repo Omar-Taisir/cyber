@@ -1,182 +1,190 @@
-import React, { useState, useMemo } from 'react';
-import { TOOLS_DATABASE } from '../constants';
-import { getToolAdvice, ToolAdviceResponse } from '../services/geminiService';
-import { HackingTool } from '../types';
-
-type DifficultyFilter = 'All' | 'Beginner' | 'Intermediate' | 'Advanced';
+import React, { useState } from 'react';
+import { GoogleGenAI, Type } from "@google/genai";
+import { getApiKey } from '../services/geminiService';
+import { ScanResult } from '../types';
 
 interface ToolboxProps {
   lang: 'en' | 'ar';
 }
 
 const Toolbox: React.FC<ToolboxProps> = ({ lang }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyFilter>('All');
-  const [selectedToolAdvice, setSelectedToolAdvice] = useState<ToolAdviceResponse | null>(null);
-  const [loadingAdvice, setLoadingAdvice] = useState<string | null>(null);
+  const [target, setTarget] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+  const [results, setResults] = useState<ScanResult[]>([]);
+  const [sources, setSources] = useState<{ title: string, uri: string }[]>([]);
 
-  const filteredTools = useMemo(() => {
-    return TOOLS_DATABASE.filter(t => {
-      const matchesSearch = t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.category.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesDifficulty = selectedDifficulty === 'All' || t.difficulty === selectedDifficulty;
-      return matchesSearch && matchesDifficulty;
-    });
-  }, [searchTerm, selectedDifficulty]);
+  const handleDeepScan = async () => {
+    if (!target) return;
+    setIsScanning(true);
+    setResults([]);
+    setSources([]);
 
-  const groupedTools = useMemo(() => {
-    return filteredTools.reduce((acc, tool) => {
-      if (!acc[tool.category]) acc[tool.category] = [];
-      acc[tool.category].push(tool);
-      return acc;
-    }, {} as Record<string, HackingTool[]>);
-  }, [filteredTools]);
-
-  const fetchAdvice = async (tool: HackingTool) => {
-    setSelectedToolAdvice(null);
-    setLoadingAdvice(tool.name);
     try {
-      const advice = await getToolAdvice(tool.name, "Isolated Tactical Lab");
-      setSelectedToolAdvice(advice);
-    } catch (err: any) {
-      const errorMsg = err?.message || "INTEL_DROPPED";
-      setSelectedToolAdvice({ text: `CRITICAL_ERR: ${errorMsg}`, sources: [] });
+      const ai = new GoogleGenAI({ apiKey: getApiKey() as string, apiVersion: "v1beta" });
+
+      let response;
+      try {
+        response = await ai.models.generateContent({
+          model: 'gemini-1.5-flash',
+          contents: `[SYSTEM: VULN_ENGINE_9]
+            Target: ${target}
+            Instruction: Perform a deep logical discovery of vulnerabilities. Reference 2024 exploits.
+            Format: EXACT JSON array of ScanResult objects.`,
+          config: {
+            tools: [{ googleSearch: {} }] as any,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  id: { type: Type.STRING },
+                  type: { type: Type.STRING },
+                  severity: { type: Type.STRING },
+                  description: { type: Type.STRING },
+                  remediation: { type: Type.STRING },
+                  cvss: { type: Type.NUMBER },
+                  status: { type: Type.STRING }
+                },
+                required: ["id", "type", "severity", "description", "remediation", "cvss", "status"]
+              }
+            }
+          }
+        });
+      } catch (err) {
+        response = await ai.models.generateContent({
+          model: 'gemini-1.5-flash',
+          contents: `[SYSTEM: VULN_ENGINE_9]
+            Target: ${target}
+            Format: JSON array of ScanResult objects.`,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  id: { type: Type.STRING },
+                  type: { type: Type.STRING },
+                  severity: { type: Type.STRING },
+                  description: { type: Type.STRING },
+                  remediation: { type: Type.STRING },
+                  cvss: { type: Type.NUMBER },
+                  status: { type: Type.STRING }
+                },
+                required: ["id", "type", "severity", "description", "remediation", "cvss", "status"]
+              }
+            }
+          }
+        });
+      }
+
+      const groundingSources = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => ({
+        title: chunk.web?.title || chunk.web?.uri,
+        uri: chunk.web?.uri
+      })).filter((s: any) => s.uri) || [];
+
+      setSources(groundingSources);
+
+      if (response.text) {
+        const parsed = JSON.parse(response.text);
+        setResults(Array.isArray(parsed) ? parsed : []);
+      }
+    } catch (error) {
+      console.error("Deep Scan Fault", error);
     } finally {
-      setLoadingAdvice(null);
+      setIsScanning(false);
     }
   };
 
-  const t = {
-    en: {
-      TITLE: 'Arsenal_DB',
-      SUB: 'OFFENSIVE ASSET REPOSITORY',
-      SEARCH: 'Query binary database...',
-      INTEL: 'UPLINK INTEL',
-      OBJECTS: 'Sync Objects'
-    },
-    ar: {
-      TITLE: 'قاعدة_بيانات_الترسانة',
-      SUB: 'مستودع الأصول الهجومية',
-      SEARCH: 'استعلام قاعدة البيانات...',
-      INTEL: 'ربط المعلومات',
-      OBJECTS: 'مزامنة الكائنات'
-    }
-  }[lang];
-
   return (
-    <div className={`space-y-12 pb-40 animate-in fade-in duration-700 ${lang === 'ar' ? 'font-arabic text-right' : ''}`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-10 border-b border-white/5 pb-10">
-        <div className="space-y-2 w-full md:w-auto">
-          <div className="flex items-center gap-3">
-            <span className="w-1 h-1 bg-cyan-400"></span>
-            <span className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.5em]">{t.SUB}</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tighter uppercase italic break-words">{t.TITLE}</h1>
-          <p className="text-slate-500 font-black text-[9px] uppercase tracking-[0.4em] opacity-60">{TOOLS_DATABASE.length} {t.OBJECTS}</p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-4 items-center w-full md:w-auto">
-          <div className="flex flex-wrap justify-center bg-white/5 border border-white/10 p-1 rounded-2xl w-full sm:w-auto">
-            {['All', 'Beginner', 'Intermediate', 'Advanced'].map((level) => (
-              <button
-                key={level}
-                onClick={() => setSelectedDifficulty(level as DifficultyFilter)}
-                className={`flex-1 sm:flex-none px-3 sm:px-5 py-2 text-[9px] font-black uppercase tracking-widest transition-all rounded-xl ${selectedDifficulty === level ? 'bg-cyan-400 text-black' : 'text-slate-500 hover:text-white'}`}
-              >
-                {level}
-              </button>
-            ))}
-          </div>
-          <div className="relative w-full sm:w-80 group">
-            <i className={`fas fa-search absolute ${lang === 'ar' ? 'right-5' : 'left-5'} top-1/2 -translate-y-1/2 text-slate-700 group-focus-within:text-cyan-400 transition-colors`}></i>
-            <input
-              type="text"
-              placeholder={t.SEARCH}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full bg-black border border-white/10 ${lang === 'ar' ? 'pr-14 pl-5' : 'pl-14 pr-5'} py-4 text-xs font-mono tracking-widest rounded-2xl outline-none focus:border-cyan-400/50 shadow-inner`}
-            />
-          </div>
-        </div>
+    <div className={`space-y-12 h-full overflow-y-auto custom-scrollbar p-1 pb-20 ${lang === 'ar' ? 'font-arabic' : ''}`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+      <header className="space-y-3">
+        <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic">Tactical_Toolbox<span className="text-cyan-400">.</span></h2>
+        <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.6em]">{lang === 'ar' ? 'أدوات الهجوم والدفاع المتقدمة' : 'Proactive Vulnerability Synthesis'}</p>
       </header>
 
-      {selectedToolAdvice && (
-        <div className="glass-panel p-10 border-cyan-400/50 border-2 animate-in slide-in-from-top-4 duration-500 overflow-hidden bg-black relative shadow-2xl shadow-cyan-400/10">
-          <div className={`absolute top-0 ${lang === 'ar' ? 'left-0' : 'right-0'} p-6`}>
-            <button onClick={() => setSelectedToolAdvice(null)} className="text-cyan-400 hover:text-white transition-all bg-white/5 w-10 h-10 rounded-full flex items-center justify-center border border-white/10"><i className="fas fa-times text-base"></i></button>
-          </div>
-          <div className="flex items-center gap-6 mb-10 border-b border-white/5 pb-8">
-            <div className="w-16 h-16 border border-cyan-400 text-cyan-400 flex items-center justify-center shadow-[0_0_30px_rgba(0,242,255,0.4)] rounded-2xl"><i className="fas fa-terminal text-2xl"></i></div>
-            <div>
-              <h3 className="text-white font-black uppercase text-3xl tracking-tighter italic">Technical_Intel: {loadingAdvice}</h3>
-              <p className="text-[9px] text-cyan-400 font-black uppercase tracking-[0.4em] opacity-60">Source: Aegis Autonomous Engine</p>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+        <div className="lg:col-span-4 space-y-8">
+          <div className="glass-panel p-8 bg-black/40 border-white/5 space-y-8">
+            <div className="space-y-4">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{lang === 'ar' ? 'تحديد الهدف' : 'TARGET_SPECIFICATION'}</label>
+              <input
+                type="text"
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+                placeholder="https://target-domain.com"
+                className="w-full bg-black border border-white/10 rounded-xl px-5 py-4 text-[12px] text-cyan-400 focus:outline-none focus:border-cyan-400/50 font-mono transition-all"
+              />
             </div>
+            <button
+              onClick={handleDeepScan}
+              disabled={isScanning || !target}
+              className="w-full bg-white/5 border border-white/10 hover:border-cyan-400/40 hover:bg-cyan-400/5 text-white py-5 rounded-2xl text-[11px] font-black uppercase tracking-[0.4em] transition-all flex items-center justify-center gap-4 group disabled:opacity-20"
+            >
+              {isScanning ? (
+                <>
+                  <i className="fas fa-circle-notch animate-spin text-cyan-400"></i>
+                  <span className="animate-pulse">{lang === 'ar' ? 'جاري التحليل...' : 'ANALYZING_TARGET...'}</span>
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-radar group-hover:text-cyan-400 transition-colors"></i>
+                  {lang === 'ar' ? 'بدء فحص عميق' : 'INITIATE_DEEP_SCAN'}
+                </>
+              )}
+            </button>
           </div>
-          <div className={`text-cyan-400 text-sm font-medium whitespace-pre-wrap leading-relaxed max-w-6xl font-mono opacity-80 border-${lang === 'ar' ? 'r' : 'l'} border-cyan-400/30 ${lang === 'ar' ? 'pr-8' : 'pl-8'}`}>
-            {selectedToolAdvice.text}
 
-            {/* Display verification sources as required by Gemini grounding guidelines */}
-            {selectedToolAdvice.sources.length > 0 && (
-              <div className="mt-8 pt-6 border-t border-cyan-400/20">
-                <p className="text-[10px] font-black uppercase tracking-[0.4em] mb-4 italic opacity-60">Grounding_Context:</p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedToolAdvice.sources.map((source, idx) => (
-                    <a
-                      key={idx}
-                      href={source.uri}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[9px] bg-cyan-400/5 text-cyan-400/60 border border-cyan-400/20 px-3 py-1.5 rounded-lg hover:text-white hover:bg-cyan-400/20 transition-all flex items-center gap-2"
-                    >
-                      <i className="fas fa-link text-[8px]"></i> {source.title}
-                    </a>
-                  ))}
+          {sources.length > 0 && (
+            <div className="glass-panel p-8 bg-cyan-400/[0.02] border-cyan-400/10 animate-in fade-in slide-in-from-left-4">
+              <h4 className="text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-6 italic">{lang === 'ar' ? 'مصادر الاستخبارات' : 'INTEL_SOURCES'}_</h4>
+              <div className="space-y-4">
+                {sources.map((s, i) => (
+                  <a key={i} href={s.uri} target="_blank" rel="noopener noreferrer" className="block p-4 bg-black/40 border border-white/5 rounded-xl hover:border-cyan-400/20 transition-all">
+                    <p className="text-[11px] font-bold text-slate-300 truncate mb-1">{s.title}</p>
+                    <p className="text-[9px] text-slate-600 truncate font-mono uppercase">{s.uri}</p>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="lg:col-span-8 flex flex-col gap-8">
+          {results.length > 0 ? (
+            results.map((r, i) => (
+              <div key={i} className="glass-panel p-10 bg-black/40 border-white/5 hover:border-white/10 transition-all animate-in fade-in slide-in-from-bottom-4 group">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-6">
+                    <span className={`text-[10px] px-4 py-1.5 rounded-full font-black uppercase tracking-widest ${r.severity === 'CRITICAL' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
+                      r.severity === 'HIGH' ? 'bg-orange-500/10 text-orange-500 border border-orange-500/20' :
+                        'bg-cyan-500/10 text-cyan-500 border border-cyan-500/20'
+                      }`}>
+                      {r.severity}
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-600 uppercase tracking-widest">{r.id}</span>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">{lang === 'ar' ? 'درجة الخطورة' : 'RISK_SCORE'}</p>
+                    <p className="text-2xl font-black text-white italic">{r.cvss.toFixed(1)}</p>
+                  </div>
+                </div>
+                <h3 className="text-xl font-black text-white mb-4 uppercase tracking-tight group-hover:text-cyan-400 transition-colors italic">{r.type.replace(/_/g, ' ')}</h3>
+                <p className="text-[13px] text-slate-400 leading-relaxed mb-10 max-w-3xl">{r.description}</p>
+                <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
+                  <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-4 italic">{lang === 'ar' ? 'خطة المعالجة' : 'REMEDIATION_STRATEGY'}:</p>
+                  <p className="text-[12px] text-slate-300 font-mono leading-relaxed">{r.remediation}</p>
                 </div>
               </div>
-            )}
-          </div>
+            ))
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center glass-panel bg-black/40 border-dashed border-white/5 opacity-30 min-h-[400px]">
+              <i className="fas fa-radar text-6xl text-slate-800 mb-8 animate-pulse"></i>
+              <p className="text-[11px] font-black uppercase tracking-[1em] text-slate-700">{lang === 'ar' ? 'انتظار الفحص' : 'AWAIT_SCAN_INIT'}</p>
+            </div>
+          )}
         </div>
-      )}
-
-      <div className="space-y-24">
-        {(Object.entries(groupedTools) as [string, HackingTool[]][]).map(([category, tools]) => (
-          <div key={category} className="space-y-8">
-            <div className="flex items-center gap-8 px-2">
-              <h2 className="text-xs font-black text-white uppercase tracking-[0.8em] italic whitespace-nowrap">{category}</h2>
-              <div className="h-[0.5px] flex-1 bg-white/10"></div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {tools.map((tool, idx) => (
-                <div key={idx} className="glass-panel p-8 border-white/5 hover:border-cyan-400/40 group flex flex-col transition-all overflow-hidden bg-white/[0.01]">
-                  <div className="flex items-center gap-5 mb-8">
-                    <div className="w-12 h-12 border border-white/10 flex items-center justify-center text-slate-500 group-hover:text-cyan-400 group-hover:border-cyan-400/40 group-hover:bg-cyan-400/5 transition-all rounded-2xl shadow-inner">
-                      <i className={`fas ${tool.icon} text-lg`}></i>
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="text-lg font-black text-white truncate italic uppercase tracking-tighter group-hover:text-cyan-400 transition-colors">{tool.name}</h3>
-                      <span className="text-[8px] font-black uppercase tracking-widest text-slate-600 group-hover:text-cyan-400 border border-white/10 group-hover:border-cyan-400 px-2 py-0.5 mt-1.5 inline-block rounded-lg transition-all">{tool.difficulty}</span>
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-slate-500 group-hover:text-slate-300 mb-8 flex-1 leading-relaxed transition-all font-medium opacity-80">{tool.description}</p>
-
-                  <div className="space-y-4">
-                    <div className="bg-black/80 p-4 border border-white/5 font-mono text-[10px] text-cyan-400/40 group-hover:text-cyan-400 transition-all truncate rounded-xl shadow-inner italic">
-                      $ {tool.usage}
-                    </div>
-                    <button
-                      onClick={() => fetchAdvice(tool)}
-                      disabled={loadingAdvice === tool.name}
-                      className="w-full py-4 btn-action text-[10px] disabled:opacity-20 rounded-2xl shadow-xl shadow-cyan-400/5"
-                    >
-                      {loadingAdvice === tool.name ? <i className="fas fa-circle-notch fa-spin"></i> : t.INTEL}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   );
