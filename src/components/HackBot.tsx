@@ -68,10 +68,13 @@ const HackBot: React.FC<HackBotProps> = ({ lang }) => {
         ));
       }
 
+      // Using gemini-1.5-flash for compatibility
+      const MODEL_NAME = 'gemini-1.5-flash';
+
       let response;
       try {
         response = await ai.models.generateContent({
-          model: 'gemini-1.5-pro',
+          model: MODEL_NAME,
           contents: currentInput,
           config: {
             systemInstruction: `You are AEGIS-ARCHITECT, a professional autonomous offensive security architect. 
@@ -93,7 +96,7 @@ const HackBot: React.FC<HackBotProps> = ({ lang }) => {
       } catch (searchError) {
         // Fallback without googleSearch
         response = await ai.models.generateContent({
-          model: 'gemini-1.5-pro',
+          model: MODEL_NAME,
           contents: currentInput,
           config: {
             systemInstruction: `You are AEGIS-ARCHITECT, a professional autonomous offensive security architect. 

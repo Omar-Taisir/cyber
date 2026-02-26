@@ -5,17 +5,10 @@ export const getApiKey = () => {
   // Safe environment detection
   const env = (import.meta as any).env || {};
 
-  // 1. Check Local Storage first (User priority)
-  if (typeof window !== 'undefined') {
-    const manualKey = localStorage.getItem('AEGIS_GEMINI_API_KEY');
-    if (manualKey) return manualKey;
-  }
-
-  // 2. Check Public Mode (Special toggle)
+  const manual = typeof window !== 'undefined' ? localStorage.getItem('AEGIS_GEMINI_API_KEY') : null;
   const isPublicMode = typeof window !== 'undefined' ? localStorage.getItem('AEGIS_PUBLIC_KEY_MODE') === 'true' : false;
-
-  // 3. Environment variables (Vite & Process handles)
   const viteKey = env.VITE_GEMINI_API_KEY;
+
   let processKey = "";
   try {
     if (typeof process !== 'undefined' && (process as any).env) {
@@ -24,11 +17,8 @@ export const getApiKey = () => {
   } catch (e) { }
 
   if (isPublicMode) return processKey || viteKey;
-  return manualKey || viteKey || processKey || "";
+  return manual || viteKey || processKey || "";
 };
-
-// Re-defining manualKey for clarity in the return line above
-const manualKey = typeof window !== 'undefined' ? localStorage.getItem('AEGIS_GEMINI_API_KEY') : null;
 
 export interface SecurityAnalysisResponse {
   results: ScanResult[];
@@ -79,10 +69,13 @@ function parseGeminiJson(rawText: string | undefined): any {
   }
 }
 
+// Global default model - using flash for maximum compatibility and to avoid 404/access issues
+const DEFAULT_MODEL = 'gemini-1.5-flash';
+
 export const analyzeCode = async (code: string): Promise<DeobfuscationResponse> => {
   const ai = new GoogleGenAI({ apiKey: getApiKey() as string });
   const response = await ai.models.generateContent({
-    model: 'gemini-1.5-pro', // Using stable model for reliability
+    model: DEFAULT_MODEL,
     contents: `[SYSTEM: CODE_RECONNAISSANCE]
     Analyze this code block. It may be obfuscated or malicious.
     1. De-obfuscate/Clean the code.
@@ -110,7 +103,7 @@ export const analyzeCode = async (code: string): Promise<DeobfuscationResponse> 
 export const getCustomPayload = async (prompt: string, category: string): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: getApiKey() as string });
   const response = await ai.models.generateContent({
-    model: 'gemini-1.5-flash',
+    model: DEFAULT_MODEL,
     contents: `[SYSTEM: OFFENSIVE_SYNTHESIS]
     Requirement: ${prompt}
     Vector: ${category}
@@ -123,7 +116,7 @@ export const generateNetworkIntel = async (range: string): Promise<NetworkIntelR
   const scanTask = async (): Promise<NetworkIntelResponse> => {
     const ai = new GoogleGenAI({ apiKey: getApiKey() as string });
     const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: DEFAULT_MODEL,
       contents: `Simulate high-fidelity network reconnaissance for subnet: ${range}. 
       1. Identify all active hosts.
       2. Perform reverse DNS lookups to resolve hostnames where possible.
@@ -189,7 +182,7 @@ export const analyzeSecurity = async (
     const ai = new GoogleGenAI({ apiKey: getApiKey() as string });
     try {
       const response = await ai.models.generateContent({
-        model: 'gemini-1.5-pro',
+        model: DEFAULT_MODEL,
         contents: `[SYSTEM: 100%_WEB_PENTEST_ENGINE]
         Target: ${url}
         Context: ${headers}
@@ -231,7 +224,7 @@ export const analyzeSecurity = async (
     } catch (error) {
       // Fallback without googleSearch
       const response = await ai.models.generateContent({
-        model: 'gemini-1.5-pro',
+        model: DEFAULT_MODEL,
         contents: `[SYSTEM: 100%_WEB_PENTEST_ENGINE]
         Target: ${url}
         Context: ${headers}
@@ -273,7 +266,7 @@ export const getToolAdvice = async (toolName: string, target: string): Promise<T
   const ai = new GoogleGenAI({ apiKey: getApiKey() as string });
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: DEFAULT_MODEL,
       contents: `[OFFENSIVE_BRIEFING]
       Tool: ${toolName}
       Instruction: Explain the low-level technical logic and IDS/WAF bypass mechanics for this tool. Provide advanced CLI deployment examples for target: ${target}`,
@@ -291,7 +284,7 @@ export const getToolAdvice = async (toolName: string, target: string): Promise<T
     };
   } catch (error) {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: DEFAULT_MODEL,
       contents: `[OFFENSIVE_BRIEFING]
       Tool: ${toolName}
       Instruction: Explain the low-level technical logic and IDS/WAF bypass mechanics for this tool. Provide advanced CLI deployment examples for target: ${target}`,
