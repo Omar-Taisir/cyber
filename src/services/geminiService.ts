@@ -1,6 +1,34 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { ScanResult, PentestWorkflow, ScanIntensity, PentestScope, Host } from "../types";
+
+export const getApiKey = () => {
+  // Safe environment detection
+  const env = (import.meta as any).env || {};
+
+  // 1. Check Local Storage first (User priority)
+  if (typeof window !== 'undefined') {
+    const manualKey = localStorage.getItem('AEGIS_GEMINI_API_KEY');
+    if (manualKey) return manualKey;
+  }
+
+  // 2. Check Public Mode (Special toggle)
+  const isPublicMode = typeof window !== 'undefined' ? localStorage.getItem('AEGIS_PUBLIC_KEY_MODE') === 'true' : false;
+
+  // 3. Environment variables (Vite & Process handles)
+  const viteKey = env.VITE_GEMINI_API_KEY;
+  let processKey = "";
+  try {
+    if (typeof process !== 'undefined' && (process as any).env) {
+      processKey = (process as any).env.GEMINI_API_KEY || (process as any).env.API_KEY;
+    }
+  } catch (e) { }
+
+  if (isPublicMode) return processKey || viteKey;
+  return manualKey || viteKey || processKey || "";
+};
+
+// Re-defining manualKey for clarity in the return line above
+const manualKey = typeof window !== 'undefined' ? localStorage.getItem('AEGIS_GEMINI_API_KEY') : null;
 
 export interface SecurityAnalysisResponse {
   results: ScanResult[];
@@ -51,28 +79,16 @@ function parseGeminiJson(rawText: string | undefined): any {
   }
 }
 
-// Helper to get API Key
-const getApiKey = () => {
-  const manualKey = typeof window !== 'undefined' ? localStorage.getItem('AEGIS_GEMINI_API_KEY') : null;
-  return manualKey ||
-    ((import.meta as any).env?.VITE_GEMINI_API_KEY as string) ||
-    ((process as any).env?.GEMINI_API_KEY as string);
-};
-
 export const analyzeCode = async (code: string): Promise<DeobfuscationResponse> => {
-  const ai = new GoogleGenAI({ apiKey: getApiKey() });
+  const ai = new GoogleGenAI({ apiKey: getApiKey() as string });
   const response = await ai.models.generateContent({
-    model: 'gemini-1.5-pro',
-    contents: [{
-      role: 'user', parts: [{
-        text: `[SYSTEM: CODE_RECONNAISSANCE]
+    model: 'gemini-1.5-pro', // Using stable model for reliability
+    contents: `[SYSTEM: CODE_RECONNAISSANCE]
     Analyze this code block. It may be obfuscated or malicious.
     1. De-obfuscate/Clean the code.
     2. Identify intent (Exfiltration, Persistence, Lateral movement).
     3. List technical indicators.
-    Code: ${code}`
-      }]
-    }],
+    Code: ${code}`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -92,34 +108,28 @@ export const analyzeCode = async (code: string): Promise<DeobfuscationResponse> 
 };
 
 export const getCustomPayload = async (prompt: string, category: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: getApiKey() });
+  const ai = new GoogleGenAI({ apiKey: getApiKey() as string });
   const response = await ai.models.generateContent({
     model: 'gemini-1.5-flash',
-    contents: [{
-      role: 'user', parts: [{
-        text: `[SYSTEM: OFFENSIVE_SYNTHESIS]
+    contents: `[SYSTEM: OFFENSIVE_SYNTHESIS]
     Requirement: ${prompt}
     Vector: ${category}
-    Return ONLY the code. No explanation. Stealth optimized.` }]
-    }]
+    Return ONLY the code. No explanation. Stealth optimized.`,
   });
   return response.text || "ERR_PAYLOAD_NULL";
 };
 
 export const generateNetworkIntel = async (range: string): Promise<NetworkIntelResponse> => {
   const scanTask = async (): Promise<NetworkIntelResponse> => {
-    const ai = new GoogleGenAI({ apiKey: getApiKey() });
+    const ai = new GoogleGenAI({ apiKey: getApiKey() as string });
     const response = await ai.models.generateContent({
       model: 'gemini-1.5-flash',
-      contents: [{
-        role: 'user', parts: [{
-          text: `Simulate high-fidelity network reconnaissance for subnet: ${range}. 
+      contents: `Simulate high-fidelity network reconnaissance for subnet: ${range}. 
       1. Identify all active hosts.
       2. Perform reverse DNS lookups to resolve hostnames where possible.
       3. Fingerprint OS versions and hardware vendors.
       4. Enumerate open ports and identify specific services and versions (e.g., Apache 2.4.41, OpenSSH 8.2p1).
-      5. Calculate a risk score for each host based on identified services.` }]
-      }],
+      5. Calculate a risk score for each host based on identified services.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -176,39 +186,98 @@ export const analyzeSecurity = async (
   scopes: PentestScope[] = ['WEB_APP']
 ): Promise<SecurityAnalysisResponse> => {
   const scanTask = async (): Promise<SecurityAnalysisResponse> => {
-    const ai = new GoogleGenAI({ apiKey: getApiKey() });
-    const response = await ai.models.generateContent({
-      model: 'gemini-1.5-pro',
-      contents: [{
-        role: 'user', parts: [{
-          text: `[SYSTEM: 100%_WEB_PENTEST_ENGINE]
-      Target: ${url}
-      Context: ${headers}
-      Directives: Perform a deep logical audit. Correlate with 2024-2025 CVEs using Search.
-      Format: JSON array of ScanResult objects.` }]
-      }],
-      config: {
-        tools: [{ googleSearch: {} }],
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              vulnerability: { type: Type.STRING },
-              type: { type: Type.STRING },
-              severity: { type: Type.STRING, enum: ['Low', 'Medium', 'High', 'Critical'] },
-              description: { type: Type.STRING },
-              impact: { type: Type.STRING },
-              remediation: { type: Type.STRING },
-              cveId: { type: Type.STRING },
-              exploitPoC: { type: Type.STRING },
-              attackChain: { type: Type.ARRAY, items: { type: Type.STRING } }
-            },
-            required: ["vulnerability", "severity", "description", "exploitPoC", "impact", "remediation"]
+    const ai = new GoogleGenAI({ apiKey: getApiKey() as string });
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-1.5-pro',
+        contents: `[SYSTEM: 100%_WEB_PENTEST_ENGINE]
+        Target: ${url}
+        Context: ${headers}
+        Directives: Perform a deep logical audit. Correlate with 2024-2025 CVEs using Search.
+        Format: JSON array of ScanResult objects.`,
+        config: {
+          responseMimeType: "application/json",
+          tools: [{ googleSearch: {} }],
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                vulnerability: { type: Type.STRING },
+                type: { type: Type.STRING },
+                severity: { type: Type.STRING, enum: ['Low', 'Medium', 'High', 'Critical'] },
+                description: { type: Type.STRING },
+                impact: { type: Type.STRING },
+                remediation: { type: Type.STRING },
+                cveId: { type: Type.STRING },
+                exploitPoC: { type: Type.STRING },
+                attackChain: { type: Type.ARRAY, items: { type: Type.STRING } }
+              },
+              required: ["vulnerability", "severity", "description", "exploitPoC", "impact", "remediation"]
+            }
           }
         }
-      }
+      });
+
+      const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => ({
+        title: chunk.web?.title || chunk.web?.uri,
+        uri: chunk.web?.uri
+      })).filter((s: any) => s.uri) || [];
+
+      return {
+        results: parseGeminiJson(response.text) || [],
+        sources: sources
+      };
+    } catch (error) {
+      // Fallback without googleSearch
+      const response = await ai.models.generateContent({
+        model: 'gemini-1.5-pro',
+        contents: `[SYSTEM: 100%_WEB_PENTEST_ENGINE]
+        Target: ${url}
+        Context: ${headers}
+        Directives: Perform a deep logical audit.
+        Format: JSON array of ScanResult objects.`,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                vulnerability: { type: Type.STRING },
+                type: { type: Type.STRING },
+                severity: { type: Type.STRING, enum: ['Low', 'Medium', 'High', 'Critical'] },
+                description: { type: Type.STRING },
+                impact: { type: Type.STRING },
+                remediation: { type: Type.STRING },
+                cveId: { type: Type.STRING },
+                exploitPoC: { type: Type.STRING },
+                attackChain: { type: Type.ARRAY, items: { type: Type.STRING } }
+              },
+              required: ["vulnerability", "severity", "description", "exploitPoC", "impact", "remediation"]
+            }
+          }
+        }
+      });
+      return {
+        results: parseGeminiJson(response.text) || [],
+        sources: []
+      };
+    }
+  };
+
+  return executeWithRetry(scanTask);
+};
+
+export const getToolAdvice = async (toolName: string, target: string): Promise<ToolAdviceResponse> => {
+  const ai = new GoogleGenAI({ apiKey: getApiKey() as string });
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-1.5-flash",
+      contents: `[OFFENSIVE_BRIEFING]
+      Tool: ${toolName}
+      Instruction: Explain the low-level technical logic and IDS/WAF bypass mechanics for this tool. Provide advanced CLI deployment examples for target: ${target}`,
+      config: { tools: [{ googleSearch: {} }] }
     });
 
     const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => ({
@@ -217,33 +286,19 @@ export const analyzeSecurity = async (
     })).filter((s: any) => s.uri) || [];
 
     return {
-      results: parseGeminiJson(response.text) || [],
-      sources: sources
+      text: response.text || "INTEL_FETCH_FAULT",
+      sources
     };
-  };
-
-  return executeWithRetry(scanTask);
-};
-
-export const getToolAdvice = async (toolName: string, target: string): Promise<ToolAdviceResponse> => {
-  const ai = new GoogleGenAI(getApiKey());
-  const model = ai.getGenerativeModel({
-    model: "gemini-1.5-flash",
-    tools: [{ googleSearch: {} }]
-  });
-
-  const result = await model.generateContent(`[OFFENSIVE_BRIEFING]
-    Tool: ${toolName}
-    Instruction: Explain the low-level technical logic and IDS/WAF bypass mechanics for this tool. Provide advanced CLI deployment examples for target: ${target}`);
-
-  const response = result.response;
-  const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => ({
-    title: chunk.web?.title || chunk.web?.uri,
-    uri: chunk.web?.uri
-  })).filter((s: any) => s.uri) || [];
-
-  return {
-    text: response.text() || "INTEL_FETCH_FAULT",
-    sources
-  };
+  } catch (error) {
+    const response = await ai.models.generateContent({
+      model: "gemini-1.5-flash",
+      contents: `[OFFENSIVE_BRIEFING]
+      Tool: ${toolName}
+      Instruction: Explain the low-level technical logic and IDS/WAF bypass mechanics for this tool. Provide advanced CLI deployment examples for target: ${target}`,
+    });
+    return {
+      text: response.text || "INTEL_FETCH_FAULT",
+      sources: []
+    };
+  }
 };

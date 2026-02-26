@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { TOOLS_DATABASE } from '../constants';
 import { getToolAdvice, ToolAdviceResponse } from '../services/geminiService';
@@ -39,9 +38,9 @@ const Toolbox: React.FC<ToolboxProps> = ({ lang }) => {
     try {
       const advice = await getToolAdvice(tool.name, "Isolated Tactical Lab");
       setSelectedToolAdvice(advice);
-    } catch (err) {
-      console.error("AI_UPLINK_FAIL:", err);
-      setSelectedToolAdvice({ text: "CRITICAL_ERR: INTEL_DROPPED", sources: [] });
+    } catch (err: any) {
+      const errorMsg = err?.message || "INTEL_DROPPED";
+      setSelectedToolAdvice({ text: `CRITICAL_ERR: ${errorMsg}`, sources: [] });
     } finally {
       setLoadingAdvice(null);
     }
